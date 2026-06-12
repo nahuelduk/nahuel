@@ -18,10 +18,9 @@ def add_indicators(df: pd.DataFrame) -> pd.DataFrame:
 
     # Momentum
     df["RSI_14"] = ta.momentum.rsi(df["close"], window=14)
-    macd = ta.trend.macd(df["close"], window_fast=12, window_slow=26, window_sign=9)
-    df["MACD"] = macd
-    df["MACD_signal"] = ta.trend.macd_signal(df["close"], window_fast=12, window_slow=26, window_sign=9)
-    df["MACDh_12_26_9"] = macd - df["MACD_signal"]
+    df["MACD"] = ta.trend.macd(df["close"], window_fast=12, window_slow=26)
+    df["MACD_signal"] = ta.trend.macd_signal(df["close"], window_fast=12, window_slow=26)
+    df["MACDh_12_26_9"] = df["MACD"] - df["MACD_signal"]
 
     # Volatility
     bb = ta.volatility.bollinger_bands(df["close"], window=20, window_dev=2)
