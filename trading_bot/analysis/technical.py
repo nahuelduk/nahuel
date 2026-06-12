@@ -1,8 +1,8 @@
 """
-Technical indicators computed with ta library — all on a single DataFrame.
+Technical indicators — pure pandas implementation.
 """
 import pandas as pd
-import ta
+import numpy as np
 
 
 def add_indicators(df: pd.DataFrame) -> pd.DataFrame:
@@ -11,31 +11,63 @@ def add_indicators(df: pd.DataFrame) -> pd.DataFrame:
 
     df = df.copy()
 
-    # Trend
-    df["EMA_20"] = ta.trend.ema_indicator(df["close"], window=20)
-    df["EMA_50"] = ta.trend.ema_indicator(df["close"], window=50)
-    df["EMA_200"] = ta.trend.ema_indicator(df["close"], window=200)
+    # EMA
+    df["EMA_20"] = df["close"].ewm(span=20, adjust=False).mean()
+    df["EMA_50"] = df["close"].ewm(span=50, adjust=False).mean()
+    df["EMA_200"] = df["close"].ewm(span=200, adjust=False).mean()
 
-    # Momentum
-    df["RSI_14"] = ta.momentum.rsi(df["close"], window=14)
-    df["MACD"] = ta.trend.macd(df["close"], window_fast=12, window_slow=26)
-    df["MACD_signal"] = ta.trend.macd_signal(df["close"], window_fast=12, window_slow=26)
-    df["MACDh_12_26_9"] = df["MACD"] - df["MACD_signal"]
+    # RSI
+    df["RSI_14"] = compute_rsi(df["close"], 14)
 
-    # Volatility
-    bb = ta.volatility.bollinger_bands(df["close"], window=20, window_dev=2)
-    df["BBU_20_2.0"] = bb.iloc[:, 0]
-    df["BBM_20_2.0"] = bb.iloc[:, 1]
-    df["BBL_20_2.0"] = bb.iloc[:, 2]
-    df["ATR_14"] = ta.volatility.average_true_range(df["high"], df["low"], df["close"], window=14)
+    # MACD
+    macd_line, signal_line = compute_macd(df["close"], 12, 26, 9)
+    df["MACD"] = macd_line
+    df["MACD_signal"] = signal_line
+    df["MACDh_12_26_9"] = macd_line - signal_line
+
+    # Bollinger Bands
+    bb_middle = df["close"].rolling(window=20).mean()
+    bb_std = df["close"].rolling(window=20).std()
+    df["BBM_20_2.0"] = bb_middle
+    df["BBU_20_2.0"] = bb_middle + (bb_std * 2)
+    df["BBL_20_2.0"] = bb_middle - (bb_std * 2)
+
+    # ATR
+    df["ATR_14"] = compute_atr(df["high"], df["low"], df["close"], 14)
     df["ATRr_14"] = df["ATR_14"] / df["close"]
 
-    # Volume
-    df["OBV"] = ta.volume.on_balance_volume(df["close"], df["volume"])
-    df["VWAP"] = ta.volume.volume_weighted_average_price(df["high"], df["low"], df["close"], df["volume"])
+    # OBV
+    df["OBV"] = (np.sign(df["close"].diff()) * df["volume"]).fillna(0).cumsum()
+
+    # VWAP
+    df["VWAP"] = (df["close"] * df["volume"]).rolling(window=20).sum() / df["volume"].rolling(window=20).sum()
 
     df.dropna(inplace=True)
     return df
+
+
+def compute_rsi(prices: pd.Series, period: int = 14) -> pd.Series:
+    delta = prices.diff()
+    gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
+    rs = gain / loss
+    return 100 - (100 / (1 + rs))
+
+
+def compute_macd(prices: pd.Series, fast: int = 12, slow: int = 26, signal: int = 9):
+    ema_fast = prices.ewm(span=fast, adjust=False).mean()
+    ema_slow = prices.ewm(span=slow, adjust=False).mean()
+    macd_line = ema_fast - ema_slow
+    signal_line = macd_line.ewm(span=signal, adjust=False).mean()
+    return macd_line, signal_line
+
+
+def compute_atr(high: pd.Series, low: pd.Series, close: pd.Series, period: int = 14) -> pd.Series:
+    tr1 = high - low
+    tr2 = abs(high - close.shift())
+    tr3 = abs(low - close.shift())
+    tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
+    return tr.rolling(window=period).mean()
 
 
 def compute_signal(df: pd.DataFrame) -> float:
