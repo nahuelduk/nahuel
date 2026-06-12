@@ -10,6 +10,7 @@ from core.data_feed   import DataFeed
 from core.risk_manager import RiskManager
 from analysis.technical import add_indicators, compute_signal
 from analysis.ml_model  import MLPredictor
+from utils.state_manager import init_state, update_portfolio, add_trade, add_signal
 
 
 def setup_logging():
@@ -25,6 +26,7 @@ def setup_logging():
 
 class TradingBot:
     def __init__(self):
+        init_state()
         self.broker  = get_broker()
         self.feed    = DataFeed()
         self.risk    = RiskManager(self.broker)
@@ -58,7 +60,9 @@ class TradingBot:
             for ex in exits:
                 symbol = ex["symbol"]
                 pos    = self.broker.portfolio.positions[symbol]
-                self.broker.place_order(symbol, "sell", pos["amount"], prices[symbol])
+                price = prices[symbol]
+                self.broker.place_order(symbol, "sell", pos["amount"], price)
+                add_trade(symbol, "sell", pos["amount"], price, ex["reason"])
                 self.log.info("EXIT %s — reason: %s", symbol, ex["reason"])
 
         # Analyse each symbol
@@ -79,6 +83,7 @@ class TradingBot:
             combined = tech_score * 0.6 + (ml_dir * ml_conf) * 0.4
             price    = prices.get(symbol, 0)
 
+            add_signal(symbol, tech_score, ml_dir, ml_conf, combined)
             self.log.info(
                 "%s | price=%.4f | tech=%.3f | ml=%+d(%.0f%%) | combined=%.3f",
                 symbol, price, tech_score, ml_dir, ml_conf * 100, combined,
@@ -91,6 +96,7 @@ class TradingBot:
                 size = self.risk.position_size(price, capital)
                 if size > 0:
                     self.broker.place_order(symbol, "buy", size, price)
+                    add_trade(symbol, "buy", size, price, "signal")
                     self.log.info("ENTRY BUY %s  size=%.6f @ $%.4f", symbol, size, price)
 
         # Retrain ML model every 24 ticks (~24 h on 1h TF)
@@ -103,6 +109,7 @@ class TradingBot:
         # Portfolio summary
         if hasattr(self.broker, "portfolio"):
             p = self.broker.portfolio
+            update_portfolio(p.cash, p.positions, prices)
             self.log.info("Portfolio — cash: $%.2f | total: $%.2f | positions: %d",
                           p.cash, p.total_value, len(p.positions))
 
