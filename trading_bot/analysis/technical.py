@@ -1,8 +1,8 @@
 """
-Technical indicators computed with pandas-ta — all on a single DataFrame.
+Technical indicators computed with ta library — all on a single DataFrame.
 """
 import pandas as pd
-import pandas_ta as ta
+import ta
 
 
 def add_indicators(df: pd.DataFrame) -> pd.DataFrame:
@@ -12,21 +12,28 @@ def add_indicators(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
 
     # Trend
-    df.ta.ema(length=20,  append=True)
-    df.ta.ema(length=50,  append=True)
-    df.ta.ema(length=200, append=True)
+    df["EMA_20"] = ta.trend.ema_indicator(df["close"], window=20)
+    df["EMA_50"] = ta.trend.ema_indicator(df["close"], window=50)
+    df["EMA_200"] = ta.trend.ema_indicator(df["close"], window=200)
 
     # Momentum
-    df.ta.rsi(length=14, append=True)
-    df.ta.macd(fast=12, slow=26, signal=9, append=True)
+    df["RSI_14"] = ta.momentum.rsi(df["close"], window=14)
+    macd = ta.trend.macd(df["close"], window_fast=12, window_slow=26, window_sign=9)
+    df["MACD"] = macd
+    df["MACD_signal"] = ta.trend.macd_signal(df["close"], window_fast=12, window_slow=26, window_sign=9)
+    df["MACDh_12_26_9"] = macd - df["MACD_signal"]
 
     # Volatility
-    df.ta.bbands(length=20, std=2, append=True)
-    df.ta.atr(length=14, append=True)
+    bb = ta.volatility.bollinger_bands(df["close"], window=20, window_dev=2)
+    df["BBU_20_2.0"] = bb.iloc[:, 0]
+    df["BBM_20_2.0"] = bb.iloc[:, 1]
+    df["BBL_20_2.0"] = bb.iloc[:, 2]
+    df["ATR_14"] = ta.volatility.average_true_range(df["high"], df["low"], df["close"], window=14)
+    df["ATRr_14"] = df["ATR_14"] / df["close"]
 
     # Volume
-    df.ta.obv(append=True)
-    df.ta.vwap(append=True)
+    df["OBV"] = ta.volume.on_balance_volume(df["close"], df["volume"])
+    df["VWAP"] = ta.volume.volume_weighted_average_price(df["high"], df["low"], df["close"], df["volume"])
 
     df.dropna(inplace=True)
     return df
