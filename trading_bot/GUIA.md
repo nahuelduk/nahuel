@@ -127,23 +127,23 @@ API_KEY=tu_token
 
 ## Compilar a Ejecutable Windows (.exe)
 
-### Un solo .exe (incluye todo)
+**Un único .exe con interfaz gráfica — muy simple**
+
+En PowerShell/CMD en la carpeta `trading_bot`:
 
 ```bash
-cd trading_bot
-.\build_single.bat
+.\build.bat
 ```
 
-Esto crea: `dist\trading_bot.exe` (~200 MB)
+Espera 2-3 minutos. Crea: `dist\trading_bot.exe`
 
-### Usar el ejecutable
+### Usar
 
-1. Ejecutá `trading_bot.exe`
-2. Interfaz gráfica con 3 botones:
-   - **▶ Start Bot** — inicia el bot de trading
-   - **⏹ Stop Bot** — detiene el bot
-   - **📊 Open Dashboard** — abre navegador con dashboard
-3. Los logs aparecen en la ventana del launcher
+1. **Doble-click** en `dist\trading_bot.exe`
+2. Se abre ventana con 3 botones:
+   - **▶ Start Bot** — inicia el bot
+   - **📊 Dashboard** — abre gráficos en navegador
+   - **⏹ Stop** — detiene
 
 ---
 

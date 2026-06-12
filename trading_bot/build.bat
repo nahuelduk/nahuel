@@ -1,51 +1,42 @@
 @echo off
-REM Build script for Trading Bot — creates trading_bot.exe and dashboard.exe
+setlocal enabledelayedexpansion
+
+echo Installing PyInstaller...
+python -m pip install pyinstaller -q
 
 echo.
-echo ========================================
-echo Building Trading Bot Executables
-echo ========================================
+echo Building trading_bot.exe...
 echo.
 
-REM Check if PyInstaller is installed
-python -m pip show pyinstaller >nul 2>&1
-if errorlevel 1 (
-    echo Installing PyInstaller...
-    python -m pip install pyinstaller
-)
-
-echo.
-echo [1/2] Building Bot executable...
 pyinstaller --onefile ^
+    --windowed ^
     --name trading_bot ^
-    --icon=trading_bot.ico ^
-    --add-data "config.py:." ^
-    --add-data ".env:." ^
+    --distpath dist ^
+    --specpath build ^
+    --workpath build\work ^
+    --add-data "config.py;." ^
+    --add-data "core;core" ^
+    --add-data "analysis;analysis" ^
+    --add-data "utils;utils" ^
     --hidden-import=colorlog ^
     --hidden-import=ccxt ^
-    --hidden-import=pandas_ta ^
+    --hidden-import=sklearn ^
     --collect-all=streamlit ^
-    main.py
+    --collect-all=plotly ^
+    app.py
 
-echo.
-echo [2/2] Building Dashboard executable...
-pyinstaller --onefile ^
-    --name dashboard ^
-    --icon=dashboard.ico ^
-    --windowed ^
-    --hidden-import=streamlit ^
-    --hidden-import=plotly ^
-    dashboard.py
+if exist dist\trading_bot.exe (
+    echo.
+    echo ✓ SUCCESS! trading_bot.exe created
+    echo.
+    echo Location: dist\trading_bot.exe
+    echo.
+    echo Double-click to run!
+    echo.
+) else (
+    echo.
+    echo ✗ Build failed
+    echo.
+)
 
-echo.
-echo ========================================
-echo Build Complete!
-echo ========================================
-echo.
-echo Executables are in: .\dist\
-echo.
-echo To run:
-echo   1. trading_bot.exe        (Terminal window - bot process)
-echo   2. dashboard.exe          (Browser dashboard)
-echo.
 pause
