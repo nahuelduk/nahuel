@@ -125,6 +125,28 @@ API_KEY=tu_token
 
 ---
 
+## Compilar a Ejecutable Windows (.exe)
+
+### Un solo .exe (incluye todo)
+
+```bash
+cd trading_bot
+.\build_single.bat
+```
+
+Esto crea: `dist\trading_bot.exe` (~200 MB)
+
+### Usar el ejecutable
+
+1. Ejecutá `trading_bot.exe`
+2. Interfaz gráfica con 3 botones:
+   - **▶ Start Bot** — inicia el bot de trading
+   - **⏹ Stop Bot** — detiene el bot
+   - **📊 Open Dashboard** — abre navegador con dashboard
+3. Los logs aparecen en la ventana del launcher
+
+---
+
 ## Pasar de simulado a dinero real
 
 En `config.py` cambiar solo estas 2 líneas:
