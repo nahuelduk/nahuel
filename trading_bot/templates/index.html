@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Trading Bot</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 900px;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .status {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border-left: 5px solid #dc3545;
+        }
+
+        .status.running {
+            border-left-color: #28a745;
+        }
+
+        .status-text {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .status-detail {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            flex: 1;
+            min-width: 150px;
+            padding: 15px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-start {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-start:hover:not(:disabled) {
+            background: #218838;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3);
+        }
+
+        .btn-stop {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-stop:hover:not(:disabled) {
+            background: #c82333;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(220, 53, 69, 0.3);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .stat-box {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #999;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 20px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .section {
+            margin-top: 30px;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .trades-list, .signals-list {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #eee;
+            border-radius: 8px;
+        }
+
+        .trade-item, .signal-item {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+            font-size: 14px;
+        }
+
+        .trade-item:last-child, .signal-item:last-child {
+            border-bottom: none;
+        }
+
+        .trade-buy {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+        }
+
+        .trade-sell {
+            background: #f8d7da;
+            border-left: 4px solid #dc3545;
+        }
+
+        .empty-message {
+            padding: 20px;
+            text-align: center;
+            color: #999;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            background: #dc3545;
+            border-radius: 50%;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 Trading Bot AI</h1>
+            <p>Paper Trading • Binance Testnet</p>
+        </div>
+
+        <div class="content">
+            <!-- Status -->
+            <div class="status" id="status">
+                <div class="status-text">
+                    <span class="loading"></span> Stopped
+                </div>
+                <div class="status-detail">Ready to start</div>
+            </div>
+
+            <!-- Buttons -->
+            <div class="buttons">
+                <button class="btn-start" id="startBtn" onclick="startBot()">▶ START BOT</button>
+                <button class="btn-stop" id="stopBtn" onclick="stopBot()" disabled>⏹ STOP</button>
+            </div>
+
+            <!-- Stats -->
+            <div class="stats">
+                <div class="stat-box">
+                    <div class="stat-label">Cash</div>
+                    <div class="stat-value" id="cash">$10,000</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Total Value</div>
+                    <div class="stat-value" id="total">$10,000</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Open Positions</div>
+                    <div class="stat-value" id="positions">0</div>
+                </div>
+            </div>
+
+            <!-- Recent Trades -->
+            <div class="section">
+                <div class="section-title">Recent Trades</div>
+                <div class="trades-list" id="trades">
+                    <div class="empty-message">No trades yet</div>
+                </div>
+            </div>
+
+            <!-- Recent Signals -->
+            <div class="section">
+                <div class="section-title">Recent Signals</div>
+                <div class="signals-list" id="signals">
+                    <div class="empty-message">No signals yet</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function startBot() {
+            fetch('/api/start', {method: 'POST'})
+                .then(r => r.json())
+                .then(data => {
+                    document.getElementById('startBtn').disabled = true;
+                    document.getElementById('stopBtn').disabled = false;
+                    updateStatus();
+                });
+        }
+
+        function stopBot() {
+            fetch('/api/stop', {method: 'POST'})
+                .then(r => r.json())
+                .then(data => {
+                    document.getElementById('startBtn').disabled = false;
+                    document.getElementById('stopBtn').disabled = true;
+                    updateStatus();
+                });
+        }
+
+        function updateStatus() {
+            fetch('/api/status')
+                .then(r => r.json())
+                .then(data => {
+                    const status = document.getElementById('status');
+                    if (data.running) {
+                        status.classList.add('running');
+                        status.innerHTML = '<div class="status-text"><span class="loading"></span> Running</div><div class="status-detail">Bot is analyzing markets...</div>';
+                    } else {
+                        status.classList.remove('running');
+                        status.innerHTML = '<div class="status-text">⏸ Stopped</div><div class="status-detail">Ready to start</div>';
+                    }
+
+                    // Update stats
+                    const p = data.portfolio;
+                    document.getElementById('cash').textContent = '$' + (p.cash || 10000).toLocaleString('en', {maximumFractionDigits: 0});
+                    document.getElementById('total').textContent = '$' + (p.total_value || 10000).toLocaleString('en', {maximumFractionDigits: 0});
+                    document.getElementById('positions').textContent = Object.keys(p.positions || {}).length;
+
+                    // Update trades
+                    const tradesDiv = document.getElementById('trades');
+                    if (data.trades.length === 0) {
+                        tradesDiv.innerHTML = '<div class="empty-message">No trades yet</div>';
+                    } else {
+                        tradesDiv.innerHTML = data.trades.reverse().map(t => `
+                            <div class="trade-item trade-${t.side}">
+                                <strong>${t.symbol}</strong> ${t.side.toUpperCase()}
+                                ${t.amount.toFixed(6)} @ $${t.price.toFixed(2)}
+                                <br><small>${t.timestamp}</small>
+                            </div>
+                        `).join('');
+                    }
+
+                    // Update signals
+                    const signalsDiv = document.getElementById('signals');
+                    if (data.signals.length === 0) {
+                        signalsDiv.innerHTML = '<div class="empty-message">No signals yet</div>';
+                    } else {
+                        signalsDiv.innerHTML = data.signals.reverse().slice(0, 10).map(s => `
+                            <div class="signal-item">
+                                <strong>${s.symbol}</strong> - Combined: ${s.combined_score.toFixed(3)}
+                                <br><small>${s.timestamp}</small>
+                            </div>
+                        `).join('');
+                    }
+                });
+        }
+
+        // Update every 3 seconds
+        setInterval(updateStatus, 3000);
+        updateStatus();
+    </script>
+</body>
+</html>
