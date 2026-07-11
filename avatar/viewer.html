@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>body{margin:0;background:#1a1a2e}canvas{display:block}</style>
+<script type="importmap">
+{"imports":{
+  "three":"./node_modules/three/build/three.module.js",
+  "three/addons/":"./node_modules/three/examples/jsm/",
+  "@pixiv/three-vrm":"./node_modules/@pixiv/three-vrm/lib/three-vrm.module.js"
+}}
+</script>
+</head>
+<body>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
+
+const params = new URLSearchParams(location.search);
+const view = params.get('view') || 'front';
+const expr = params.get('expr') || '';
+
+const W = 900, H = 1000;
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setSize(W, H);
+renderer.setPixelRatio(1);
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x232338);
+const camera = new THREE.PerspectiveCamera(30, W / H, 0.1, 50);
+
+const light = new THREE.DirectionalLight(0xffffff, Math.PI * 0.55);
+light.position.set(0.4, 1.2, 2.2).normalize();
+scene.add(light);
+scene.add(new THREE.AmbientLight(0xa0a0c0, Math.PI * 0.28));
+
+const loader = new GLTFLoader();
+loader.register((parser) => new VRMLoaderPlugin(parser));
+
+loader.load('./DragonaAvatar.vrm', (gltf) => {
+  const vrm = gltf.userData.vrm;
+  VRMUtils.rotateVRM0(vrm);       // VRM0 mira a -Z; rotar para mirar a camara
+  scene.add(vrm.scene);
+  // re-inicializar la fisica tras la rotacion (solo artefacto del visor)
+  vrm.scene.updateMatrixWorld(true);
+  if (vrm.springBoneManager && vrm.springBoneManager.setInitState) {
+    vrm.springBoneManager.setInitState();
+  }
+
+  if (expr) {
+    for (const e of expr.split(',')) {
+      const [name, w] = e.split(':');
+      vrm.expressionManager.setValue(name, w ? parseFloat(w) : 1.0);
+    }
+    vrm.expressionManager.update();
+  }
+
+  const views = {
+    front:  { pos: [0, 1.05, 3.4],  tgt: [0, 0.95, 0] },
+    face:   { pos: [0, 1.42, 0.85], tgt: [0, 1.42, 0] },
+    side:   { pos: [3.2, 1.15, 0.4],  tgt: [0, 1.0, 0] },
+    back:   { pos: [0, 1.2, -3.4],  tgt: [0, 1.0, 0] },
+    threeq: { pos: [1.9, 1.35, 2.6], tgt: [0, 1.0, 0] },
+  };
+  const v = views[view] || views.front;
+  camera.position.set(...v.pos);
+  camera.lookAt(...v.tgt);
+
+  vrm.update(1 / 60);
+  renderer.render(scene, camera);
+  window.__ready = true;
+}, undefined, (err) => { window.__error = String(err && err.message || err); console.error(err); });
+</script>
+</body>
+</html>
